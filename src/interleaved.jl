@@ -21,8 +21,20 @@ end
 
 getindex(B::InterleavedImage, idx::CartesianIndex) = B[idx.I...]
 
+colon_to_inds(A::AbstractArray, I...) = colon_to_inds(indices(A), I...)
+colon_to_inds(idxs::Tuple, idxc::Colon, idxsc...) = (first(idxs), colon_to_inds(Base.tail(idxs), idxsc...)...)
+colon_to_inds(idxs::Tuple, idxc, idxsc...) = (idxc, colon_to_inds(Base.tail(idxs), idxsc...)...)
+colon_to_inds(::Tuple{}) = ()
+colon_to_inds(idxs::Tuple, ::Tuple{}) = error("Argument Tuples must be of equal length")
+colon_to_inds(::Tuple{}, idxc, idxsc...) = error("Argument Tuples must be of equal length")
+
+_idxs(A, dim, idxs) = idxs
+_idxs(A, dim, idxs::Colon) = indices(A,dim)
+_idxs(A::AbstractArray, idxs) = colon_to_inds(axes(A), idxs...)
+_idx_shape(A::AbstractArray, idxs) = map(length, _idxs(A, idxs))
+
 function getindex(B::InterleavedImage{T}, I...) where {T}
-    prealloc = zeros(T, CachedSeries._idx_shape(B, (I...))...)
+    prealloc = zeros(T, _idx_shape(B, (I...,))...)
     tinds = last(I)
     for (i,t) in enumerate(tinds)
         halft = t>>1

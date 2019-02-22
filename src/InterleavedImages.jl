@@ -1,7 +1,9 @@
 module InterleavedImages
 
 using Images, AxisArrays
-using CachedSeries #only for a utility function
+const axes = Base.axes #for name conflict with AxisArrays
+
+using CachedArrays #only for a utility function
 
 import Base: size, getindex, setindex!
 
