@@ -1,12 +1,12 @@
-module InterlacedStacks
+module InterleavedImages
 
 using Images, AxisArrays
 using CachedSeries #only for a utility function
 
 import Base: size, getindex, setindex!
 
-export InterlacedStackSeries
+export InterleavedImage
 
-include("interlaced.jl")
+include("interleaved.jl")
 
 end # module

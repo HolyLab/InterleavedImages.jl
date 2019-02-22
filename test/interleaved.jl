@@ -1,9 +1,9 @@
-using InterlacedStacks, Base.Test
+using InterleavedImages, Test
 
 A1 = rand(3,3,3,5)
 A2 = rand(3,3,3,5)
 
-ss = InterlacedStackSeries(A1,A2)
+ss = InterleavedImage(A1,A2)
 
 @test all(ss[:,:,:,1].==A1[:,:,:,1])
 @test all(ss[:,:,:,2].==A2[:,:,:,1])

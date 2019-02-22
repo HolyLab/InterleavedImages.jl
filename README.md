@@ -1,1 +1,1 @@
-# InterlacedStacks
+# InterleavedImages
