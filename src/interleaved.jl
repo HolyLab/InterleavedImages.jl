@@ -35,20 +35,20 @@ size(B::InterleavedImage) = _size(size(B.oddA), B.imarkers...)
 
 #returns the appropriate child array and translates the query I
 #into an index for that array
-arr_idx(img::InterleavedImage{T,N}, I::Tuple) where {T,N} =
-    _arr_idx(img, (), first(imarkers(img)), Base.tail(imarkers(img)), I)
-
-function _arr_idx(img::InterleavedImage, seenI::Tuple, curm::Iyes, ims::Tuple, unseenI::Tuple) where {T,N}
-    isod = isodd(first(unseenI))
-    halfi = first(unseenI)>>1
-    unseenI = Base.tail(unseenI)
-    return ifelse(isod, (oddchild(img), (seenI..., halfi+1, unseenI...)), (evenchild(img), (seenI..., halfi, unseenI...)))
+function arr_idx(img::InterleavedImage{T,N}, I::Tuple) where {T,N}
+    markers = imarkers(img)
+    child = _chooseimage(img, I, markers...)
+    return child, _arr_idx(markers, I)
 end
 
-_arr_idx(img::InterleavedImage, seenI::Tuple, curm::Ino, ims::Tuple, unseenI::Tuple) where {T,N} =
-    _arr_idx(img, (seenI...,first(unseenI)), first(ims), Base.tail(ims), Base.tail(unseenI))
-_arr_idx(img::InterleavedImage, seenI::Tuple, curm::Ino, ims::Tuple{}, unseenI::Tuple) where {T,N} =
-    error("No interleaved dimension found")
+@inline _chooseimage(img, I, ::Ino, rest...) = _chooseimage(img, Base.tail(I), rest...)
+@inline _chooseimage(img, I, ::Iyes, rest...) = return isodd(first(I)) ? oddchild(img) : evenchild(img)
+@inline _chooseimage(img, I) = error("no yes markers found")
+
+_arr_idx(::Tuple{}, ::Tuple{}) = ()
+_arr_idx(markers, I) = (_arr_idx1(first(markers), first(I)), _arr_idx(Base.tail(markers), Base.tail(I))...)
+_arr_idx1(::Iyes, i) = i>>1 + isodd(i)
+_arr_idx1(::Ino, i)  = i
 
 function getindex(img::InterleavedImage{T,N}, I::Vararg{Int, N}) where {T,N}
     chosenA, idx = arr_idx(img, (I...,))
