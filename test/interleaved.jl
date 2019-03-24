@@ -4,14 +4,7 @@ A1 = rand(3,3,3,5)
 A2 = rand(3,3,3,5)
 ss = InterleavedImage(A1,A2,4)
 
-#type inference bug?
-##code_warntype shows that the below is inferrable...
-#_A1 = rand(3,3,3)
-#_A2 = rand(3,3,3)
-#_ss = InterleavedImage(_A1,_A2,3)
-#@code_warntype(_ss[1,3,2])
-##yet the below is not inferrable...
-#@code_warntype(ss[1,3,2,3])
+@test @inferred(ss[1,3,2,3]) == A1[1,3,2,2]
 
 @test all(ss[:,:,:,1].==A1[:,:,:,1])
 @test all(ss[:,:,:,2].==A2[:,:,:,1])
