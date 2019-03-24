@@ -2,8 +2,9 @@ using InterleavedImages, Images, AxisArrays, Test
 
 A1 = rand(3,3,3,5)
 A2 = rand(3,3,3,5)
+ss = InterleavedImage(A1,A2,4)
 
-ss = InterleavedImage(A1,A2)
+@test @inferred(ss[1,3,2,3]) == A1[1,3,2,2]
 
 @test all(ss[:,:,:,1].==A1[:,:,:,1])
 @test all(ss[:,:,:,2].==A2[:,:,:,1])
@@ -17,7 +18,7 @@ ss[:,:,:,3] = zeros(3,3,3)
 #ImageMeta
 meta1 = ImageMeta(A1)
 meta2 = ImageMeta(A2)
-ssm = InterleavedImage(meta1,meta2)
+ssm = InterleavedImage(meta1,meta2,4)
 
 @test isa(ssm, ImageMeta)
 @test all(ssm[:,:,:,1].==A1[:,:,:,1])
@@ -26,7 +27,7 @@ ssm = InterleavedImage(meta1,meta2)
 #AxisArray
 aa1 = AxisArray(A1)
 aa2 = AxisArray(A2)
-ssaa = InterleavedImage(aa1,aa2)
+ssaa = InterleavedImage(aa1,aa2,4)
 @test isa(ssaa, AxisArray)
 @test all(ssaa[:,:,:,1].==A1[:,:,:,1])
 @test all(ssaa[:,:,:,2].==A2[:,:,:,1])

@@ -1,58 +1,68 @@
-struct InterleavedImage{T} <: AbstractArray{T,4}
-    A1::AbstractArray{T,4}
-    A2::AbstractArray{T,4}
-    function InterleavedImage(A1::AbstractArray{T,4}, A2::AbstractArray{T,4}) where {T}
-        if size(A1) != size(A2)
-            error("The two image arrays must be of the same size")
-        end
-        new{T}(A1, A2)
-    end
+abstract type InterleaveMarker end
+
+struct Iyes <: InterleaveMarker end
+struct Ino <: InterleaveMarker end
+
+struct InterleavedImage{T,N,AA1<:AbstractArray{T,N}, AA2<:AbstractArray{T,N}, IMS<:NTuple{N,InterleaveMarker}} <: AbstractArray{T,N}
+    oddA::AA1
+    evenA::AA2
+    imarkers::IMS
 end
 
-size(B::InterleavedImage) = (Base.front(size(B.A1))..., size(B.A1,4) + size(B.A2,4))
+function InterleavedImage(oddA::AbstractArray{T,N}, evenA::AbstractArray{T,N}, idim::Int=N) where {T,N}
+    if size(oddA) != size(evenA)
+        error("The two image arrays must be of the same size")
+    end
+    if idim > N || idim < 1
+        error("Interleaved dim out of range")
+    end
+    ims = ((ifelse(x==idim, Iyes(), Ino()) for x = 1:N)...,)
+    return InterleavedImage(oddA, evenA, ims)
+end
+
+imarkers(img::InterleavedImage) = img.imarkers
+interleaved_dim(A::InterleavedImage) = findfirst(isa.(imarkers(A), Iyes))
+oddchild(A::InterleavedImage) = A.oddA
+evenchild(A::InterleavedImage) = A.evenA
 
 Base.IndexStyle(::Type{<:InterleavedImage}) = IndexCartesian()
 
-function getindex(B::InterleavedImage, dim1, dim2, dim3, dim4::Int)
-    t_ind = dim4
-    halft = t_ind>>1
-    return isodd(t_ind) ? getindex(B.A1, dim1, dim2, dim3, halft+1) : getindex(B.A2, dim1, dim2, dim3, halft)
+_size(szs::Tuple, curm::Iyes, ims...) = (first(szs)*2, _size(Base.tail(szs), ims...)...)
+_size(szs::Tuple, curm::Ino, ims...) = (first(szs), _size(Base.tail(szs), ims...)...)
+_size(szs::Tuple{}, ims...) = ()
+
+size(B::InterleavedImage) = _size(size(B.oddA), B.imarkers...)
+
+#returns the appropriate child array and translates the query I
+#into an index for that array
+function arr_idx(img::InterleavedImage{T,N}, I::Tuple) where {T,N}
+    markers = imarkers(img)
+    child = _chooseimage(img, I, markers...)
+    return child, _arr_idx(markers, I)
 end
 
-getindex(B::InterleavedImage, idx::CartesianIndex) = B[idx.I...]
+@inline _chooseimage(img, I, ::Ino, rest...) = _chooseimage(img, Base.tail(I), rest...)
+@inline _chooseimage(img, I, ::Iyes, rest...) = return isodd(first(I)) ? oddchild(img) : evenchild(img)
+@inline _chooseimage(img, I) = error("no yes markers found")
 
-colon_to_inds(A::AbstractArray, I...) = colon_to_inds(indices(A), I...)
-colon_to_inds(idxs::Tuple, idxc::Colon, idxsc...) = (first(idxs), colon_to_inds(Base.tail(idxs), idxsc...)...)
-colon_to_inds(idxs::Tuple, idxc, idxsc...) = (idxc, colon_to_inds(Base.tail(idxs), idxsc...)...)
-colon_to_inds(::Tuple{}) = ()
-colon_to_inds(idxs::Tuple, ::Tuple{}) = error("Argument Tuples must be of equal length")
-colon_to_inds(::Tuple{}, idxc, idxsc...) = error("Argument Tuples must be of equal length")
+_arr_idx(::Tuple{}, ::Tuple{}) = ()
+_arr_idx(markers, I) = (_arr_idx1(first(markers), first(I)), _arr_idx(Base.tail(markers), Base.tail(I))...)
+_arr_idx1(::Iyes, i) = i>>1 + isodd(i)
+_arr_idx1(::Ino, i)  = i
 
-_idxs(A, dim, idxs) = idxs
-_idxs(A, dim, idxs::Colon) = indices(A,dim)
-_idxs(A::AbstractArray, idxs) = colon_to_inds(axes(A), idxs...)
-_idx_shape(A::AbstractArray, idxs) = map(length, _idxs(A, idxs))
-
-function getindex(B::InterleavedImage{T}, I...) where {T}
-    prealloc = zeros(T, _idx_shape(B, (I...,))...)
-    tinds = last(I)
-    for (i,t) in enumerate(tinds)
-        halft = t>>1
-        if isodd(t)
-            prealloc[:,:,:,i] = getindex(B.A1, I[1], I[2], I[3], halft+1)
-        else
-            prealloc[:,:,:,i] = getindex(B.A2, I[1], I[2], I[3], halft)
-        end
-    end
-    return prealloc
+function getindex(img::InterleavedImage{T,N}, I::Vararg{Int, N}) where {T,N}
+    chosenA, idx = arr_idx(img, (I...,))
+    return chosenA[idx...]
 end
 
-function setindex!(B::InterleavedImage, v, dim1, dim2, dim3, dim4::Int)
-    t_ind = dim4
-    halft = t_ind>>1
-    isodd(t_ind) ? setindex!(B.A1,v,dim1,dim2,dim3,halft+1) : setindex!(B.A2,v,dim1,dim2,dim3,halft)
+function setindex!(img::InterleavedImage{T,N}, v, I::Vararg{Int, N}) where {T,N}
+    chosenA, idx = arr_idx(img, (I...,))
+    chosenA[idx...] = v
 end
 
+#utilities for ImageMeta and AxisArray types
 #Note: this ditches img2's properites in favor of img1's. Will fix if it turns out to be a problem.
-InterleavedImage(img1::ImageMeta, img2::ImageMeta) = ImageMeta(InterleavedImage(data(img1), data(img2)), properties(img1))
-InterleavedImage(img1::AxisArray, img2::AxisArray) = match_axisspacing(InterleavedImage(data(img1), data(img2)), img1)
+InterleavedImage(img1::ImageMeta{T,N}, img2::ImageMeta{T,N}, idim::Int=N) where {T,N} =
+    ImageMeta(InterleavedImage(data(img1), data(img2), idim), properties(img1))
+InterleavedImage(img1::AxisArray{T,N}, img2::AxisArray{T,N}, idim::Int=N) where {T,N} =
+    match_axisspacing(InterleavedImage(data(img1), data(img2), idim), img1)
