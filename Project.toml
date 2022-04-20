@@ -9,6 +9,9 @@ Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 LibGit2 = "76f85450-5226-5b5a-8eaa-529ad045b433"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
+[compat]
+AxisArrays = "0.4"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
