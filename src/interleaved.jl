@@ -63,6 +63,6 @@ end
 #utilities for ImageMeta and AxisArray types
 #Note: this ditches img2's properites in favor of img1's. Will fix if it turns out to be a problem.
 InterleavedImage(img1::ImageMeta{T,N}, img2::ImageMeta{T,N}, idim::Int=N) where {T,N} =
-    ImageMeta(InterleavedImage(data(img1), data(img2), idim), properties(img1))
+    ImageMeta(InterleavedImage(arraydata(img1), arraydata(img2), idim), properties(img1))
 InterleavedImage(img1::AxisArray{T,N}, img2::AxisArray{T,N}, idim::Int=N) where {T,N} =
-    match_axisspacing(InterleavedImage(data(img1), data(img2), idim), img1)
+    match_axisspacing(InterleavedImage(arraydata(img1), arraydata(img2), idim), img1)
