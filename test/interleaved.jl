@@ -1,4 +1,4 @@
-using InterleavedImages, Images, AxisArrays, Test
+using InterleavedImages, ImageMetadata, AxisArrays, Test
 
 A1 = rand(3,3,3,5)
 A2 = rand(3,3,3,5)
